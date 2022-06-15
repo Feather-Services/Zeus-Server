@@ -15,6 +15,7 @@ public class ServerProperties {
     private String user;
     private String password;
 
+    private String redisHost;
     private String redisUser;
     private String redisPassword;
     private int redisPort;
@@ -47,7 +48,8 @@ public class ServerProperties {
         this.user = prop.getProperty("user");
         this.password = prop.getProperty("password");
 
-        this.redisPassword = prop.getProperty("redisUser");
+        this.redisHost = prop.getProperty("redisHost");
+        this.redisUser = prop.getProperty("redisUser");
         this.redisPassword = prop.getProperty("redisPassword");
         this.redisPort = Integer.parseInt(prop.getProperty("redisPort"));
 
@@ -68,6 +70,10 @@ public class ServerProperties {
 
     public String getPassword() {
         return password;
+    }
+
+    public String getRedisHost() {
+        return redisHost;
     }
 
     public String getRedisUser() {

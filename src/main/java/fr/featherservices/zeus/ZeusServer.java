@@ -3,11 +3,11 @@ package fr.featherservices.zeus;
 import fr.featherservices.zeus.command.DefaultCommands;
 import fr.featherservices.zeus.console.Console;
 import fr.featherservices.zeus.file.ServerProperties;
+import fr.featherservices.zeus.instance.ImageManager;
 import fr.featherservices.zeus.license.License;
-import fr.featherservices.zeus.logger.LogType;
-import fr.featherservices.zeus.logger.Logger;
 import fr.featherservices.zeus.plugins.PluginManager;
 import fr.featherservices.zeus.plugins.ZeusPlugin;
+import fr.featherservices.zeus.redis.RedisAccess;
 import fr.featherservices.zeus.scheduler.Tick;
 import fr.featherservices.zeus.scheduler.ZeusScheduler;
 import fr.featherservices.zeus.utils.CustomStringUtils;
@@ -63,12 +63,18 @@ public class ZeusServer {
     private File pluginFolder;
     private File imagesFolder;
 
+    private ImageManager imageManager;
+
     private PluginManager pluginManager;
 
     public ZeusServer() throws IOException {
         instance = this;
         this.isRunning = new AtomicBoolean(true);
         console = new Console(System.in, System.out, System.err);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            ZeusServer.getInstance().terminate();
+        }));
 
         File serverPropertiesFile = new File("server.properties");
         if (!serverPropertiesFile.exists()) {
@@ -81,7 +87,7 @@ public class ZeusServer {
 
         this.serverProperties = new ServerProperties(serverPropertiesFile);
 
-        License license = new License(this.serverProperties.getLicense(), "http://dev.helderia.fr");
+        License license = new License(this.serverProperties.getLicense(), "http://62.4.16.108");
         license.request();
         console.sendMessage(" |- FeatherServices - License checking: " + license.getLicense());
         if (license.isValid()) {
@@ -95,18 +101,23 @@ public class ZeusServer {
             console.sendMessage(" |- License denied");
             console.sendMessage(" |- Return error: " + license.getReturn());
             console.sendMessage("------------------------");
-            return;
+            stopServer();
         }
 
+        RedisAccess.init();
+
         console.sendMessage("Loading message configuration..");
-        File messagesFile = new File("messagesFile.yml");
+        File messagesFile = new File("messages.yml");
         if (!messagesFile.exists()) {
-            try (InputStream in = getClass().getClassLoader().getResourceAsStream("messagesFile.yml")) {
+            try (InputStream in = getClass().getClassLoader().getResourceAsStream("messages.yml")) {
                 Files.copy(in, messagesFile.toPath());
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
+        imagesFolder = new File("images");
+        imagesFolder.mkdirs();
 
         console.sendMessage("Loading docker file..");
         dockerFile = new File("/images/Dockerfile");
@@ -127,30 +138,16 @@ public class ZeusServer {
                 e.printStackTrace();
             }
         }
-
-        imagesFolder = new File("images");
-        if (!imagesFolder.exists()) {
-            Files.createDirectories(Paths.get("/images"));
-        }
-
-        System.out.println("Loading server type..");
-        serverTypeFile = new File("serverType.json");
-        if (!serverTypeFile.exists()) {
-            try (InputStream in = getClass().getClassLoader().getResourceAsStream("serverType.json")) {
-                Files.copy(in, serverTypeFile.toPath());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        imageManager = new ImageManager(imagesFile);
 
         zeusScheduler = new ZeusScheduler();
         tick = new Tick(this);
 
         console.sendMessage("Loading plugins..");
+
         pluginFolder = new File("plugins");
-        if (!pluginFolder.exists()) {
-            Files.createDirectories(Paths.get("/plugins"));
-        }
+        pluginFolder.mkdirs();
+
         pluginManager = new PluginManager(new DefaultCommands(), pluginFolder);
         try {
             Method loadPluginsMethod = PluginManager.class.getDeclaredMethod("loadPlugins");
@@ -158,7 +155,7 @@ public class ZeusServer {
             loadPluginsMethod.invoke(pluginManager);
             loadPluginsMethod.setAccessible(false);
         } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException |
-                 InvocationTargetException e) {
+                InvocationTargetException e) {
             e.printStackTrace();
         }
 
@@ -166,10 +163,6 @@ public class ZeusServer {
             console.sendMessage("Enabling plugin " + plugin.getName() + " " + plugin.getInfo().getVersion());
             plugin.onEnable();
         }
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            ZeusServer.getInstance().terminate();
-        }));
 
         console.run();
     }
@@ -185,6 +178,7 @@ public class ZeusServer {
 
         tick.waitAndKillThreads(5000);
 
+        RedisAccess.close();
         console.sendMessage("Server closed");
         console.logs.close();
     }
@@ -237,6 +231,10 @@ public class ZeusServer {
 
     public ServerProperties getServerProperties() {
         return serverProperties;
+    }
+
+    public ImageManager getImageManager() {
+        return imageManager;
     }
 
     public File getMessageFile() {

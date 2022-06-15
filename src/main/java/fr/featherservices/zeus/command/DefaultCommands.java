@@ -22,5 +22,11 @@ public class DefaultCommands implements CommandExecutor {
             ZeusServer.getInstance().stopServer();
             return;
         }
+
+        if (args[0].equalsIgnoreCase("plugins") || args[0].equalsIgnoreCase("plugin") || args[0].equalsIgnoreCase("pl")) {
+            ZeusServer.getInstance().getConsole().sendMessage("Plugins loaded (" + ZeusServer.getInstance().getPluginManager().getPlugins().size() + "):"
+                    + ZeusServer.getInstance().getPluginManager().getPlugins().toString().replace("[", "").replace("]", ""));
+            return;
+        }
     }
 }
