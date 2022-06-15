@@ -15,6 +15,12 @@ public class ServerProperties {
     private String user;
     private String password;
 
+    private String redisUser;
+    private String redisPassword;
+    private int redisPort;
+
+    private int ticksPerSecond;
+
     public ServerProperties(File file) throws IOException {
         this.file = file;
 
@@ -40,6 +46,12 @@ public class ServerProperties {
         this.license = prop.getProperty("license");
         this.user = prop.getProperty("user");
         this.password = prop.getProperty("password");
+
+        this.redisPassword = prop.getProperty("redisUser");
+        this.redisPassword = prop.getProperty("redisPassword");
+        this.redisPort = Integer.parseInt(prop.getProperty("redisPort"));
+
+        this.ticksPerSecond = Integer.parseInt(prop.getProperty("ticksPerSecond"));
     }
 
     public File getFile() {
@@ -56,5 +68,21 @@ public class ServerProperties {
 
     public String getPassword() {
         return password;
+    }
+
+    public String getRedisUser() {
+        return redisUser;
+    }
+
+    public String getRedisPassword() {
+        return redisPassword;
+    }
+
+    public int getRedisPort() {
+        return redisPort;
+    }
+
+    public int getTicksPerSecond() {
+        return ticksPerSecond;
     }
 }
